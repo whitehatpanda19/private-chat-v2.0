@@ -134,6 +134,7 @@ app.post('/api/register', async (req, res) => {
   }
 });
 
+
 app.post('/api/login', async (req, res) => {
   try {
     const { username, password, publicKey } = req.body;
@@ -143,7 +144,9 @@ app.post('/api/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(400).json({ error: 'Invalid credentials' });
 
-    if (publicKey) {
+    // Only update public key if a valid one is sent and doesn't conflict, 
+    // or preserve the existing public key if it's already set.
+    if (publicKey && (!user.public_key || user.public_key === '')) {
       user.public_key = publicKey;
       await user.save();
     }
@@ -155,6 +158,7 @@ app.post('/api/login', async (req, res) => {
     res.status(500).json({ error: 'Login failed' });
   }
 });
+
 
 app.get('/api/users/search', authenticateToken, async (req, res) => {
   try {
