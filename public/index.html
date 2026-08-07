@@ -75,7 +75,7 @@
             <!-- 3D Glossy Button -->
             <button onclick="handleAuth('login')" class="w-full py-3.5 bg-gradient-to-b from-[#c2aee6] to-[#a28bc6] hover:from-[#b29cd6] hover:to-[#927ab6] border-t border-white/60 font-black tracking-wide rounded-full text-white text-sm transition-all shadow-[inset_0_2px_5px_rgba(255,255,255,0.6),_0_12px_20px_rgba(162,139,198,0.4)] active:scale-95">Login</button>
             
-            <div class="flex items-center justify-center gap-2 text-[10px] text-[#a898b8] font-black uppercase tracking-wider my-2">
+            <div class="flex items-center justify-center gap-2 text-[10px] text-[#a898b8] font-black tracking-wider my-2">
               <div class="h-px bg-[#e0d6eb] w-10 shadow-sm"></div>
               <span>or continue with</span>
               <div class="h-px bg-[#e0d6eb] w-10 shadow-sm"></div>
@@ -322,7 +322,7 @@
       }, 1000);
     }
 
-    // E2EE Helper Functions
+    // E2EE Helper Functions (Fixed to load existing keys permanently across logins)
     async function initE2EE() {
       const storedKeys = localStorage.getItem('e2ee_keys');
       if (storedKeys) {
@@ -344,6 +344,7 @@
         }
       }
 
+      // Generate only if no keys exist at all
       myKeyPair = await window.crypto.subtle.generateKey(
         { name: "ECDH", namedCurve: "P-256" }, true, ["deriveKey"]
       );
@@ -393,7 +394,7 @@
     }
 
     async function handleAuth(type) {
-      await initE2EE();
+      await initE2EE(); // Loads existing key or creates one if registering brand new
       const username = document.getElementById('username').value;
       const password = document.getElementById('password').value;
       const errorDiv = document.getElementById('auth-error');
@@ -420,7 +421,9 @@
     }
 
     function logout() {
-      localStorage.clear();
+      // FIXED: Never clear 'e2ee_keys' on logout so local private key persists across sessions!
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
       location.reload();
     }
 
