@@ -254,9 +254,19 @@
     let callStartTime = null;
     let callTimerInterval = null;
 
-    const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+    // Ringtone Variables
+    let ringtoneInterval = null;
 
-    // Audio Chime setup
+    const rtcConfig = { 
+      iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        { urls: 'stun:stun.services.mozilla.com' }
+      ] 
+    };
+
+    // Audio Chime & Ringtone setup
     let audioCtx = null;
     function initAudio() {
       if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -281,6 +291,39 @@
         osc.start(audioCtx.currentTime);
         osc.stop(audioCtx.currentTime + 0.4);
       } catch (e) {}
+    }
+
+    function playRingtoneBeep() {
+      try {
+        initAudio();
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime); 
+        osc.frequency.setValueAtTime(480, audioCtx.currentTime + 0.15);
+        
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+        
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime);
+        osc.stop(audioCtx.currentTime + 0.3);
+      } catch (e) {}
+    }
+
+    function startRingtone() {
+      stopRingtone();
+      playRingtoneBeep();
+      ringtoneInterval = setInterval(playRingtoneBeep, 1500);
+    }
+
+    function stopRingtone() {
+      if (ringtoneInterval) {
+        clearInterval(ringtoneInterval);
+        ringtoneInterval = null;
+      }
     }
 
     // Glassy Green Glowing Envelope Notification
@@ -740,6 +783,8 @@
       incomingCallData = data;
       currentCallTarget = data.from;
       
+      startRingtone(); // <-- Start soft ringing sound
+
       document.getElementById('call-overlay').classList.remove('hidden');
       document.getElementById('call-status').textContent = `Incoming ${data.isVideo ? 'Video' : 'Voice'} Call...`;
       document.getElementById('call-username').textContent = data.fromUsername;
@@ -749,6 +794,7 @@
     }
 
     async function acceptCall() {
+      stopRingtone(); // <-- Stop ringing
       document.getElementById('incoming-actions').classList.add('hidden');
       document.getElementById('call-status').textContent = 'Connecting...';
       document.getElementById('active-call-actions').classList.remove('hidden');
@@ -763,6 +809,7 @@
     }
 
     function rejectCall() {
+      stopRingtone(); // <-- Stop ringing
       if (incomingCallData) socket.emit('end_call', { to: incomingCallData.from });
       cleanupCall();
     }
@@ -773,6 +820,7 @@
     }
 
     function cleanupCall() {
+      stopRingtone(); // <-- Stop ringing just in case
       if (localStream) localStream.getTracks().forEach(track => track.stop());
       if (peerConnection) { peerConnection.close(); peerConnection = null; }
       
